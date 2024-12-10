@@ -1,0 +1,22 @@
+{
+	"name": "Lab6",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspace",
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.shell.linux": "/bin/bash"
+			},
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ckolkman.vscode-postgres",
+				"cweijan.vscode-redis-client",
+				"42crunch.vscode-openapi",
+				"mongodb.mongodb-vscode",
+				"jeppeandersen.vscode-kafka"
+			]
+		}
+	}
+}

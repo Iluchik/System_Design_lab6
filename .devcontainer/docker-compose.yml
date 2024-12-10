@@ -1,0 +1,119 @@
+version: '3.3'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    networks:
+      - my_network
+    volumes:
+      - ..:/workspace
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgreDB
+      - mongoDB
+      - cacheRadis
+    environment:
+      - DATABASE_URL=postgresql://stud:stud@postgreDB/archdb
+
+  postgreDB:
+    image: postgres:14
+    container_name: postgreDB
+    networks:
+      - my_network
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=stud
+      - POSTGRES_PASSWORD=stud
+      - POSTGRES_DB=archdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mongoDB:
+    image: mongo:5.0
+    container_name: mongoDB
+    restart: on-failure
+    networks:
+      - my_network
+    volumes:
+      - mongoDBdata:/data/mongoDB
+      - ./mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+
+  cacheRadis:
+    image: redis:6.2-alpine
+    container_name: cacheRadis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - my_network
+    command: redis-server --save 20 1 --loglevel warning
+
+  brokerKafka1:
+      image: 'bitnami/kafka:latest'
+      container_name: brokerKafka1
+      ports:
+         - "9092:9092"
+      environment:
+        KAFKA_ENABLE_KRAFT: "yes"
+        KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+        KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+        KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+        KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+        KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://brokerKafka1:9092"
+        KAFKA_BROKER_ID: 1
+        KAFKA_CFG_NODE_ID: 1
+        KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@brokerKafka1:9093,2@brokerKafka2:9093"
+        ALLOW_PLAINTEXT_LISTENER: "yes"
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        KAFKA_KRAFT_CLUSTER_ID: "dh6khitPSDGZSBOjNeTC_g"
+      volumes:
+        - kafka_volume1:/bitnami/kafka
+      networks:
+        - my_network
+    
+  brokerKafka2:
+      image: 'bitnami/kafka:latest'
+      container_name: brokerKafka2
+      environment:
+        KAFKA_ENABLE_KRAFT: "yes"
+        KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+        KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+        KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+        KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+        KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://brokerKafka2:9092"
+        KAFKA_BROKER_ID: 2
+        KAFKA_CFG_NODE_ID: 2
+        KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@brokerKafka1:9093,2@brokerKafka2:9093"
+        ALLOW_PLAINTEXT_LISTENER: "yes"
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        KAFKA_KRAFT_CLUSTER_ID: "dh6khitPSDGZSBOjNeTC_g"
+      volumes:
+        - kafka_volume2:/bitnami/kafka
+      networks:
+        - my_network
+
+  kafka-ui:
+      image: provectuslabs/kafka-ui:v0.4.0
+      ports:
+        - "8888:8080"
+      environment:
+        KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: "brokerKafka1:9092,brokerKafka2:9092"
+        KAFKA_CLUSTERS_0_NAME: "kraft"
+      networks:
+        - my_network
+
+networks:
+  my_network:
+volumes:
+  postgres-data:
+  mongoDBdata:
+  kafka_volume1:
+  kafka_volume2:

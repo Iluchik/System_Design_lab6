@@ -110,6 +110,21 @@ services:
       networks:
         - my_network
 
+  middleware:
+    image: library/python:3.11-bookworm
+    container_name: middleware
+    restart: on-failure
+    networks:
+      - my_network
+    volumes:
+      - ../python/middleware/kafka_handler.py:/run/handler/kafka_handler.py
+    ports:
+      - "8001:8001"
+    depends_on:
+      - brokerKafka1
+      - brokerKafka2
+    command: bash -c "pip install confluent_kafka && pip install pymongo && python ./run/handler/kafka_handler.py"
+
 networks:
   my_network:
 volumes:

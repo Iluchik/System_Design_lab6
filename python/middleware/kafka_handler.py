@@ -1,8 +1,12 @@
-import sys
-sys.path.append("..")
+from pymongo import MongoClient
 from confluent_kafka import Consumer, KafkaError
-from model.DBconfig import package_collection
 import json
+import os
+
+DATABASE_URL_MONGO = os.getenv("MONGO_URL", "mongodb://mongoDB:27017/")
+client = MongoClient(DATABASE_URL_MONGO)
+archdb = client["arch"]
+package_collection = archdb["packages"]
 
 conf = {
 	"bootstrap.servers": "brokerKafka1:9092,brokerKafka2:9092",
